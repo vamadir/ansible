@@ -1,0 +1,53 @@
+---
+- name: Install cpupower utility
+  package:
+    name: "{{ item }}"
+    state: present
+  with_items:
+    - linux-tools-common
+    - linux-tools-{{ ansible_kernel }}
+  register: cpupower_install_result
+  ignore_errors: true
+
+- name: Check if cpupower is installed
+  command: cpupower --version
+  register: cpupower_check
+  ignore_errors: true
+
+- name: Check if cpufreq_performance module exists
+  command: "find /lib/modules/$(uname -r)/kernel -type f -name '*.ko' | grep cpufreq_performance"
+  register: cpufreq_performance_check
+  ignore_errors: true
+
+- name: Load required kernel modules
+  modprobe:
+    name: "{{ item }}"
+    state: present
+  with_items:
+    - cpufreq_conservative
+    - cpufreq_powersave
+    - cpufreq_userspace
+    - cpufreq_ondemand
+    - cpufreq_performance
+  when: cpufreq_performance_check.rc == 0
+
+- name: Ensure performance governor is available
+  command: cpupower frequency-info --governors
+  register: available_governors
+  failed_when: "'performance' not in available_governors.stdout"
+  when: cpupower_check.rc == 0 and cpufreq_performance_check.rc == 0
+
+- name: Set CPU governor to performance
+  command: cpupower frequency-set -g performance
+  when: cpupower_check.rc == 0 and cpufreq_performance_check.rc == 0
+
+- name: Disable C-state for all CPUs
+  block:
+    - name: Disable C-state by setting kernel parameter
+      lineinfile:
+        path: /etc/default/grub
+        regexp: 'GRUB_CMDLINE_LINUX_DEFAULT="(.*)"'
+        line: 'GRUB_CMDLINE_LINUX_DEFAULT="\1 intel_idle.max_cstate=1 processor.max_cstate=1"'
+
+    - name: Update GRUB
+      command: update-grub

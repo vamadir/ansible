@@ -1,0 +1,19 @@
+---
+- name: (create and) open the LUKS container; name it 
+  luks_device:
+    device: "/dev/{{ disk_name }}"
+    state: "opened"
+    name: "{{ disk_name }}"
+    passphrase: "{{ luks_password }}"
+  
+- name: Create filesystem on the encrypted disk
+  filesystem:
+    fstype: ext4
+    dev: "/dev/mapper/{{ disk_name }}"
+
+- name: Mount the encrypted disk
+  mount:
+    path: "/{{ disk_name }}"
+    src: "/dev/mapper/{{ disk_name }}"
+    fstype: ext4
+    state: mounted

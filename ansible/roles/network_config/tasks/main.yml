@@ -1,0 +1,48 @@
+---
+- name: Ensure netplan is installed
+  apt:
+    name: netplan.io
+    state: present
+
+- name: Find current active network interface
+  shell: ip -o link show | awk '{print $2,$9}' | grep 'UP' | head -n 1
+  register: active_interface
+  changed_when: false
+
+- name: Extract interface name
+  set_fact:
+    interface_name: "{{ active_interface.stdout.split(':')[0] }}"
+    
+- name: Check if interface is already net0
+  set_fact:
+    is_net0: "{{ 'net0' in interface_name }}"
+    
+- name: Disable cloud-init network configuration
+  shell: touch /etc/cloud/cloud-init.disabled
+  when: not is_net0
+
+- name: Configure Netplan to rename the network interface
+  template:
+    src: netplan_config.yaml.j2
+    dest: /etc/netplan/01-netcfg.yaml
+  when: not is_net0
+
+- name: Apply Netplan configuration
+  command: netplan apply
+  when: not is_net0
+
+- name: Display information about the renamed interface
+  shell: ip addr show net0
+  register: interface_info
+  changed_when: false
+  when: not is_net0
+
+- name: Display network interface info
+  debug:
+    msg: "{{ interface_info.stdout }}"
+  when: not is_net0
+
+- name: Display message if interface is already net0
+  debug:
+    msg: "The network interface is already named net0."
+  when: is_net0

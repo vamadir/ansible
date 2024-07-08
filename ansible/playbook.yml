@@ -1,0 +1,9 @@
+---
+- hosts: ubuntu
+  become: yes  # Ensure all tasks run with root privileges
+
+  roles:
+    - role: disk_encryption
+    - role: cpu_config
+    - role: network_config
+    - role: system_info

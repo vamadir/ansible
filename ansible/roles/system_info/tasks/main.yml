@@ -1,0 +1,23 @@
+---
+- name: Gather CPU information
+  shell: lscpu
+  register: cpu_info
+
+- name: Display CPU information
+  debug:
+    msg: |
+      CPU Information:
+      ----------------
+      {{ cpu_info.stdout }}
+
+- name: Check Hyper-Threading/Multithreading status
+  shell: cat /sys/devices/system/cpu/smt/active
+  register: smt_info
+
+- name: Determine SMT status
+  set_fact:
+    smt_status: "{{ 'enabled' if smt_info.stdout.strip() == '1' else 'disabled' }}"
+
+- name: Display SMT status
+  debug:
+    msg: "Hyper-Threading/Multithreading is {{ smt_status }}"

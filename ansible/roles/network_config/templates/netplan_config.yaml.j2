@@ -1,0 +1,8 @@
+network:
+  version: 2
+  ethernets:
+    net0:
+      match:
+        name: "{{ active_interface.stdout.split(':')[0] }}"
+      set-name: net0
+      dhcp4: yes
