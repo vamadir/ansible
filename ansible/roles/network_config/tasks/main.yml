@@ -12,37 +12,34 @@
 - name: Extract interface name
   set_fact:
     interface_name: "{{ active_interface.stdout.split(':')[0] }}"
-    
-- name: Check if interface is already net0
-  set_fact:
-    is_net0: "{{ 'net0' in interface_name }}"
-    
-- name: Disable cloud-init network configuration
-  shell: touch /etc/cloud/cloud-init.disabled
-  when: not is_net0
 
-- name: Configure Netplan to rename the network interface
-  template:
-    src: netplan_config.yaml.j2
-    dest: /etc/netplan/01-netcfg.yaml
-  when: not is_net0
+- name: Check if interface is eth0
+  set_fact:
+    is_eth0: "{{ 'eth0' in interface_name }}"
+
+- name: Replace eth0 with net0 in /etc/netplan/50-cloud-init.yaml
+  replace:
+    path: /etc/netplan/50-cloud-init.yaml
+    regexp: 'eth0'
+    replace: 'net0'
+  when: is_eth0
 
 - name: Apply Netplan configuration
   command: netplan apply
-  when: not is_net0
+  when: is_eth0
 
 - name: Display information about the renamed interface
   shell: ip addr show net0
   register: interface_info
   changed_when: false
-  when: not is_net0
+  when: is_eth0
 
 - name: Display network interface info
   debug:
     msg: "{{ interface_info.stdout }}"
-  when: not is_net0
+  when: is_eth0
 
-- name: Display message if interface is already net0
+- name: Display message if interface is not eth0
   debug:
-    msg: "The network interface is already named net0."
-  when: is_net0
+    msg: "The network interface is not named eth0."
+  when: not is_eth0
