@@ -1,2 +1,2 @@
-ansible-prep/keys/*.pem
+keys/*.pem
 .vscode
