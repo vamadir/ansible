@@ -1,0 +1,55 @@
+---
+- name: Detect OS family
+  ansible.builtin.setup:
+    filter: ansible_facts
+
+- name: Set NFS package names based on OS
+  set_fact:
+    nfs_packages: "{{ nfs_packages_ubuntu if ansible_facts['os_family'] == 'Debian' else nfs_packages_redhat }}"
+
+- name: Define NFS packages for Ubuntu
+  set_fact:
+    nfs_packages_ubuntu:
+      - nfs-common
+
+- name: Define NFS packages for AlmaLinux
+  set_fact:
+    nfs_packages_redhat:
+      - nfs-utils
+
+- name: Install NFS client packages (Ubuntu)
+  package:
+    name: "{{ item }}"
+    state: present
+  loop: "{{ nfs_packages_ubuntu }}"
+  when: ansible_facts['os_family'] == 'Debian'
+
+- name: Install NFS client packages (AlmaLinux)
+  package:
+    name: "{{ item }}"
+    state: present
+  loop: "{{ nfs_packages_redhat }}"
+  when: ansible_facts['os_family'] == 'RedHat'
+
+- name: Create mount point
+  file:
+    path: "{{ nfs_mount_point }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Create systemd mount unit file
+  template:
+    src: nfs-mount.service.j2
+    dest: /etc/systemd/system/nfs-mount.service
+  notify:
+    - Reload systemd
+    - Restart NFS mount service
+
+- name: Enable and start NFS mount service
+  service:
+    name: nfs-mount
+    state: started
+    enabled: yes
+  become: yes

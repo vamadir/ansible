@@ -1,0 +1,4 @@
+---
+nfs_server: "nfs.example.com"
+nfs_mount_point: "/mnt/nfs"
+nfs_export: "/srv/nfs/data"

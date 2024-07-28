@@ -1,0 +1,65 @@
+---
+- name: Detect OS family
+  ansible.builtin.setup:
+    filter: ansible_facts
+
+- name: Set NFS package names and service based on OS
+  set_fact:
+    nfs_packages: "{{ nfs_packages_ubuntu if ansible_facts['os_family'] == 'Debian' else nfs_packages_redhat }}"
+    nfs_service_name: "{{ 'nfs-kernel-server' if ansible_facts['os_family'] == 'Debian' else 'nfs-server' }}"
+
+- name: Define NFS packages for Ubuntu
+  set_fact:
+    nfs_packages_ubuntu:
+      - nfs-kernel-server
+      - rpcbind
+
+- name: Define NFS packages for AlmaLinux
+  set_fact:
+    nfs_packages_redhat:
+      - nfs-utils
+      - rpcbind
+
+- name: Install NFS server packages (Ubuntu)
+  package:
+    name: "{{ item }}"
+    state: present
+  loop: "{{ nfs_packages_ubuntu }}"
+  when: ansible_facts['os_family'] == 'Debian'
+
+- name: Install NFS server packages (AlmaLinux)
+  package:
+    name: "{{ item }}"
+    state: present
+  loop: "{{ nfs_packages_redhat }}"
+  when: ansible_facts['os_family'] == 'RedHat'
+
+- name: Ensure NFS services are enabled and started (Ubuntu)
+  service:
+    name: "{{ item }}"
+    state: started
+    enabled: yes
+  loop:
+    - nfs-kernel-server
+    - rpcbind
+  when: ansible_facts['os_family'] == 'Debian'
+
+- name: Ensure NFS services are enabled and started (AlmaLinux)
+  service:
+    name: "{{ item }}"
+    state: started
+    enabled: yes
+  loop:
+    - nfs-server
+    - rpcbind
+  when: ansible_facts['os_family'] == 'RedHat'
+
+- name: Configure NFS exports
+  template:
+    src: exports.j2
+    dest: /etc/exports
+  notify: Restart NFS service
+
+- name: Apply NFS export configuration
+  command: exportfs -r
+  when: nfs_exports is defined

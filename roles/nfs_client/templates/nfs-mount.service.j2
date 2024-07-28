@@ -1,0 +1,11 @@
+[Unit]
+Description=Mount NFS Share
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/mount {{ nfs_server }}:{{ nfs_export }} {{ nfs_mount_point }}
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
